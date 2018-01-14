@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Google Inc.
+ * Copyright 2018 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,15 +41,15 @@ public class Ds18b20SensorDriver implements AutoCloseable {
     private TemperatureUserDriver mTemperatureUserDriver;
 
     /**
-     * Create a new Radio Thermostat sensor driver connected on the given host.
+     * Create a new Ds18b20 sensor driver connected on the given UART.
      * The driver emits {@link android.hardware.Sensor} with temperature data when
      * registered.
-     * @param host Name or IP Address of radio thermostat host.     *
+     * @param uart UART port the sensor is connected to.
      * @throws IOException
      * @see #registerTemperatureSensor()
      */
-    public Ds18b20SensorDriver(String host) throws IOException {
-        mDevice = new Ds18b20(host);
+    public Ds18b20SensorDriver(String uart) throws IOException {
+        mDevice = new Ds18b20(uart);
     }
 
     /**
@@ -93,10 +93,6 @@ public class Ds18b20SensorDriver implements AutoCloseable {
         }
     }
 
-
-    private void maybeSleep() throws IOException {
-    }
-
     private class TemperatureUserDriver extends UserSensorDriver {
         // DRIVER parameters
         // documented at https://source.android.com/devices/sensors/hal-interface.html#sensor_t
@@ -137,7 +133,6 @@ public class Ds18b20SensorDriver implements AutoCloseable {
         @Override
         public void setEnabled(boolean enabled) throws IOException {
             mEnabled = enabled;
-            maybeSleep();
         }
 
         private boolean isEnabled() {

@@ -33,6 +33,7 @@ public class OneWire implements AutoCloseable {
 
     UartDevice mUartDevice;
     byte[] mOneWireId;
+
     /**
      * Create a new OneWire sensor driver connected on the given UART.
      * @param uart UART port the sensor is connected to.
@@ -49,8 +50,27 @@ public class OneWire implements AutoCloseable {
      * @throws IOException
      */
     public OneWire(String uart, String id) throws IOException {
-        PeripheralManagerService pioService = new PeripheralManagerService();
-        mUartDevice = pioService.openUartDevice(uart);
+        this(new PeripheralManagerService().openUartDevice(uart), id);
+    }
+
+    /**
+     * Create a new OneWire sensor driver connected on the given UART.
+     * @param device UART device of the sensor.
+     * @throws IOException
+     */
+    /*package*/ OneWire(UartDevice device) throws IOException {
+        this(device, null);
+    }
+
+    /**
+     * Create a new OneWire sensor driver connected on the given UART with particular ID..
+     * @param device UART device of the sensor.
+     * @param id OneWire ID of the sensor.
+     * @throws IOException
+     */
+    /*package*/ OneWire(UartDevice device, String id) throws IOException {
+        mUartDevice = device;
+
         try {
             mUartDevice.setDataSize(8);
             mUartDevice.setParity(UartDevice.PARITY_NONE);
@@ -66,22 +86,11 @@ public class OneWire implements AutoCloseable {
         }
     }
 
-
     /**
      * Returns the One Wire Device ID.
      */
     public byte[] getOneWireId() {
         return mOneWireId;
-    }
-
-    /**
-     * Create a new OneWire sensor driver connected on the given UART.
-     * @param device UART device of the sensor.
-     * @throws IOException
-     */
-    /*package*/ OneWire(UartDevice device) throws IOException {
-        mUartDevice = device;
-        reset();
     }
 
     protected boolean oneWireBit(boolean b) throws IOException {
@@ -151,7 +160,6 @@ public class OneWire implements AutoCloseable {
         mUartDevice.setBaudrate(9600);
         uartWriteByte( 0xf0 );
         int probe = uartReadByte();
-        Log.w(TAG, "Probe Result: " + Integer.toHexString(probe));
         mUartDevice.setBaudrate(115200);
         return probe != 0 && probe != 0xf0;
     }

@@ -147,7 +147,7 @@ public class RadioThermostat implements AutoCloseable {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        return -99.0f;
+        return INVALID_TEMP_C;
     }
 
     /**

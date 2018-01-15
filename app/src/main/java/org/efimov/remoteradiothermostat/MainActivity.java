@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.Log;
 
+import com.google.android.things.contrib.driver.onewire.Ds18b20SensorDriver;
 import com.google.android.things.contrib.driver.radiothermostat.RadioThermostatSensorDriver;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ public class MainActivity extends Activity {
     private SensorManager mSensorManager;
 
     private RadioThermostatSensorDriver mRadioThermostatSensorDriver;
+    private Ds18b20SensorDriver mDs18b20SensorDriver;
 
 
     @Override
@@ -30,14 +32,13 @@ public class MainActivity extends Activity {
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mSensorManager.registerDynamicSensorCallback(new SensorCallback());
 
-
-        // RadioThermostat etc
-        // mTestTemperatureDriver = TestTemperatureDriver("aaa")
-        // TODO(mef): FIX THIS
-        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
         try {
-            mRadioThermostatSensorDriver = new RadioThermostatSensorDriver("192.168.1.60");
-            mRadioThermostatSensorDriver.registerTemperatureSensor();
+            // TODO(mef): FIX THIS
+            //StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
+            //mRadioThermostatSensorDriver = new RadioThermostatSensorDriver("192.168.1.60");
+            //mRadioThermostatSensorDriver.registerTemperatureSensor();
+            mDs18b20SensorDriver = new Ds18b20SensorDriver("UART6");
+            mDs18b20SensorDriver.registerTemperatureSensor();
         } catch (IOException e) {
             Log.e(TAG, "Cannot register sensor", e);
         }

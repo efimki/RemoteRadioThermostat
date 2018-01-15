@@ -37,16 +37,6 @@ import static org.mockito.Mockito.times;
 
 public class RadioThermostatTest {
 
-
-    private static final float EXPECTED_TEMPERATURE = 25.08f;
-    private static final float EXPECTED_FINE_TEMPERATURE = 128422.0f;
-    private static final float EXPECTED_PRESSURE = 1006.5327f;
-    private static final float EXPECTED_HUMIDITY = 45.708218f;
-
-    // Note: the datasheet points out that the calculated values can differ slightly because of
-    // rounding. We'll check that the results are within a tolerance of 0.1%
-    private static final float TOLERANCE = .001f;
-
     @Mock
     private HttpURLConnection mConnection;
 

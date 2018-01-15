@@ -16,7 +16,7 @@
 
 package com.google.android.things.contrib.driver.onewire;
 
-import com.google.android.things.pio.I2cDevice;
+import com.google.android.things.pio.UartDevice;
 
 import junit.framework.Assert;
 
@@ -27,9 +27,11 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.verification.VerificationMode;
 
 import java.io.IOException;
 
+import static junit.framework.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.byteThat;
 import static org.mockito.Matchers.eq;
@@ -37,265 +39,109 @@ import static org.mockito.Mockito.times;
 
 public class Ds18b20Test {
 
-    // Calibration values, sensor readings, and expected results for testing compensation functions,
-    // taken from the BMP280 datasheet.
-    // (https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BMP280-DS001-18.pdf)
-    private static final int[] TEMP_CALIBRATION = {27504, 26435, -1000};
-    private static final int[] PRESSURE_CALIBRATION = {36477, -10685, 3024, 2855, 140, -7, 15500,
-            -14600, 6000};
-    private static final int[] HUM_CALIBRATION = {75, 363, 0, 315, 50, 30};
-    private static final int RAW_HUMIDITY = 28437;
-    private static final int RAW_TEMPERATURE = 519888;
-    private static final int RAW_PRESSURE = 415148;
-
-    private static final float EXPECTED_TEMPERATURE = 25.08f;
-    private static final float EXPECTED_FINE_TEMPERATURE = 128422.0f;
-    private static final float EXPECTED_PRESSURE = 1006.5327f;
-    private static final float EXPECTED_HUMIDITY = 45.708218f;
-
-    // Note: the datasheet points out that the calculated values can differ slightly because of
-    // rounding. We'll check that the results are within a tolerance of 0.1%
-    private static final float TOLERANCE = .001f;
-
     @Mock
-    private I2cDevice mI2c;
+    private UartDevice mUart;
 
     @Rule
-    public MockitoRule mMokitoRule = MockitoJUnit.rule();
+    public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Rule
     public ExpectedException mExpectedException = ExpectedException.none();
 
     @Test
-    public void testCompensateTemperature() {
-        final float[] tempResults = Ds18b20.compensateTemperature(RAW_TEMPERATURE, TEMP_CALIBRATION);
-        Assert.assertEquals(EXPECTED_TEMPERATURE, tempResults[0], EXPECTED_TEMPERATURE * TOLERANCE);
-        Assert.assertEquals(EXPECTED_FINE_TEMPERATURE, tempResults[1],
-                EXPECTED_FINE_TEMPERATURE * TOLERANCE);
-    }
-
-    @Test
-    public void testCompensatePressure() {
-        final float[] tempResults = Ds18b20.compensateTemperature(RAW_TEMPERATURE, TEMP_CALIBRATION);
-        final float pressure = Ds18b20.compensatePressure(RAW_PRESSURE, tempResults[1],
-                PRESSURE_CALIBRATION);
-        Assert.assertEquals(EXPECTED_PRESSURE, pressure, EXPECTED_PRESSURE * TOLERANCE);
-    }
-
-    @Test
-    public void testCompensateHumidity() {
-        final float[] tempResults = Ds18b20.compensateTemperature(RAW_TEMPERATURE, TEMP_CALIBRATION);
-        final float humidity = Ds18b20.compensateHumidity(RAW_HUMIDITY, tempResults[1],
-                HUM_CALIBRATION);
-        Assert.assertEquals(EXPECTED_HUMIDITY, humidity, EXPECTED_HUMIDITY * TOLERANCE);
-    }
-
-    @Test
     public void close() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.close();
-        Mockito.verify(mI2c).close();
+        Ds18b20 ds18b20 = new Ds18b20(mUart);
+        ds18b20.close();
+        Mockito.verify(mUart).close();
     }
 
     @Test
     public void close_safeToCallTwice() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.close();
-        bmx280.close(); // should not throw
-        Mockito.verify(mI2c, times(1)).close();
-    }
-
-
-    @Test
-    public void setMode_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.close();
-        mExpectedException.expect(IllegalStateException.class);
-        bmx280.setMode(Ds18b20.MODE_NORMAL);
-    }
-
-    @Test
-    public void setTmperatureOversampling_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.close();
-        mExpectedException.expect(IllegalStateException.class);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-    }
-
-    @Test
-    public void setPressureOversampling_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.close();
-        mExpectedException.expect(IllegalStateException.class);
-        bmx280.setPressureOversampling(Ds18b20.OVERSAMPLING_1X);
-    }
-
-
-    @Test
-    public void setHumidityOversampling_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.close();
-        mExpectedException.expect(IllegalStateException.class);
-        bmx280.setHumidityOversampling(Ds18b20.OVERSAMPLING_1X);
-    }
-
-    @Test
-    public void readTemperature() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.readTemperature();
-        Mockito.verify(mI2c).readRegBuffer(eq(0xFA), any(byte[].class), eq(3));
-    }
-
-    @Test
-    public void readTemperature_throwsIfTemperatureOversamplingSkipped() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        // setTemperatureOversampling() not called
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("temperature oversampling is skipped");
-        bmx280.readTemperature();
+        Ds18b20 ds18b20 = new Ds18b20(mUart);
+        ds18b20.close();
+        ds18b20.close();  // should not throw
+        Mockito.verify(mUart).close();
     }
 
     @Test
     public void readTemperature_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.close();
+        Ds18b20 ds18b20 = new Ds18b20(mUart);
+        ds18b20.close();
         mExpectedException.expect(IllegalStateException.class);
         mExpectedException.expectMessage("not open");
-        bmx280.readTemperature();
+        ds18b20.readTemperature();
     }
 
     @Test
-    public void readPressure() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.setPressureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.readTemperatureAndPressure();
-        Mockito.verify(mI2c).readRegBuffer(eq(0xFA), any(byte[].class), eq(3));
-        Mockito.verify(mI2c).readRegBuffer(eq(0xF7), any(byte[].class), eq(3));
+    public void readTemperature_throwsIfNoDevices() throws IOException {
+        Ds18b20 ds18b20 = new Ds18b20(mUart);
+        // Initial Setup
+        Mockito.verify(mUart).setDataSize(8);
+        Mockito.verify(mUart).setParity(0);
+        Mockito.verify(mUart).setStopBits(1);
+        Mockito.verify(mUart).setHardwareFlowControl(0);
+
+        Mockito.when(mUart.read(any(byte[].class), eq(1))).thenReturn(1);
+        mExpectedException.expect(IOException.class);
+        mExpectedException.expectMessage("not found");
+        ds18b20.readTemperature();
+        Mockito.verify(mUart).setBaudrate(9600);
+        Mockito.verify(mUart).write(new byte[]{(byte) (0xf0)}, 1);
+        Mockito.verify(mUart).setBaudrate(115200);
     }
 
     @Test
-    public void readPressure_throwsIfTemperatureOversamplingSkipped()
-            throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        // setTemperatureOversampling() not called
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("temperature oversampling is skipped");
-        bmx280.readTemperatureAndPressure();
+    public void oneWire_ResetFails() throws IOException {
+        OneWire oneWire = new OneWire(mUart);
+        // Initial Setup
+        Mockito.verify(mUart).setDataSize(8);
+        Mockito.verify(mUart).setParity(0);
+        Mockito.verify(mUart).setStopBits(1);
+        Mockito.verify(mUart).setHardwareFlowControl(0);
+        // Reset fails because read is returning '0'.
+        Mockito.when(mUart.read(any(byte[].class), eq(1))).thenReturn(1);
+        mExpectedException.expect(IOException.class);
+        mExpectedException.expectMessage("not found");
+        boolean success = oneWire.reset();
+        Assert.assertFalse(success);
+        Mockito.verify(mUart).setBaudrate(9600);
+        Mockito.verify(mUart).write(new byte[]{(byte) (0xf0)}, 1);
+        Mockito.verify(mUart).setBaudrate(115200);
     }
 
     @Test
-    public void readPressure_throwsIfPressureOversamplingSkipped()
-            throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        // setPressureOversampling() not called
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("pressure oversampling is skipped");
-        bmx280.readTemperatureAndPressure();
+    public void convertTemperatureValid() throws IOException {
+        Ds18b20 ds18b20 = new Ds18b20(mUart);
+        // Valid raw measurement
+        byte[] validRaw = {0x3e, 0x01, 0x4b, 0x46, 0x7f, (byte) 0xff, 0x0c, 0x10, (byte) 0xb0};
+        float temp = ds18b20.convertTemperature(validRaw);
+        assertEquals(19.875f, temp);
+        assertEquals(85f,
+                ds18b20.convertTemperature(new byte[]{(byte) 0x50, (byte) 0x05, 0, 0, 0, 0, 0, 0, 0}));
+        assertEquals(125f,
+                ds18b20.convertTemperature(new byte[]{(byte) 0xd0, (byte) 0x07, 0, 0, 0, 0, 0, 0, 0}));
     }
 
     @Test
-    public void readPressure_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.setPressureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.close();
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("not open");
-        bmx280.readTemperature();
+    public void convertTemperatureZero() throws IOException {
+        Ds18b20 ds18b20 = new Ds18b20(mUart);
+        // Raw measurement equal to 0 celsius (but with invalid CRC8)
+        byte[] validRaw = {0x0, 0x0, 0, 0, 0, 0, 0, 0, 0};
+        float temp = ds18b20.convertTemperature(validRaw);
+        assertEquals(0f, temp);
     }
 
     @Test
-    public void readTemperatureAndPressure() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.setPressureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.readTemperatureAndPressure();
-        Mockito.verify(mI2c).readRegBuffer(eq(0xFA), any(byte[].class), eq(3));
-        Mockito.verify(mI2c).readRegBuffer(eq(0xF7), any(byte[].class), eq(3));
-    }
+    public void convertTemperatureNegative() throws IOException {
+        Ds18b20 ds18b20 = new Ds18b20(mUart);
+        // Raw measurement equal to -1/16 celsius (but with invalid CRC8)
+        byte[] validRaw = {(byte) 0x5e, (byte) 0xff, 0, 0, 0, 0, 0, 0, 0};
+        float temp = ds18b20.convertTemperature(validRaw);
+        assertEquals(-10.125f, temp);
+        assertEquals(-25.0625f,
+                ds18b20.convertTemperature(new byte[]{(byte) 0x6f, (byte) 0xfe, 0, 0, 0, 0, 0, 0, 0}));
+        assertEquals(-0.5f,
+                ds18b20.convertTemperature(new byte[]{(byte) 0xf8, (byte) 0xff, 0, 0, 0, 0, 0, 0, 0}));
 
-    @Test
-    public void readTemperatureAndPressure_throwsIfTemperatureOversamplingSkipped()
-            throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        // setTemperatureOversampling() not called
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("temperature oversampling is skipped");
-        bmx280.readTemperatureAndPressure();
     }
-
-    @Test
-    public void readTemperatureAndPressure_throwsIfPressureOversamplingSkipped()
-            throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        // setPressureOversampling() not called
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("pressure oversampling is skipped");
-        bmx280.readTemperatureAndPressure();
-    }
-
-    @Test
-    public void readTemperatureAndPressure_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.setPressureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.close();
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("not open");
-        bmx280.readTemperature();
-    }
-
-    @Test
-    public void readHumidity() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setHasHumiditySensor(true);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.setPressureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.setHumidityOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.readHumidity();
-        Mockito.verify(mI2c).readRegBuffer(eq(0xFA), any(byte[].class), eq(3));
-        Mockito.verify(mI2c).readRegBuffer(eq(0xFD), any(byte[].class), eq(2));
-    }
-
-    @Test
-    public void readHumidity_throwsIfHumidityOversamplingSkipped()
-            throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setHasHumiditySensor(true);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        // setHumidityOversampling() not called
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("Humidity oversampling is skipped");
-        bmx280.readHumidity();
-    }
-
-    @Test
-    public void readHumidity_throwsIfTemperatureOversamplingSkipped()
-            throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setHasHumiditySensor(true);
-        bmx280.setHumidityOversampling(Ds18b20.OVERSAMPLING_1X);
-        // setTemperatureOversampling() not called
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("temperature oversampling is skipped");
-        bmx280.readHumidity();
-    }
-
-    @Test
-    public void readHumidity_throwsIfClosed() throws IOException {
-        Ds18b20 bmx280 = new Ds18b20(mI2c);
-        bmx280.setHasHumiditySensor(true);
-        bmx280.setTemperatureOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.setHumidityOversampling(Ds18b20.OVERSAMPLING_1X);
-        bmx280.close();
-        mExpectedException.expect(IllegalStateException.class);
-        mExpectedException.expectMessage("not open");
-        bmx280.readHumidity();
-    }
-
 }

@@ -16,16 +16,11 @@
 
 package com.google.android.things.contrib.driver.onewire;
 
-import android.support.annotation.IntDef;
 import android.support.annotation.VisibleForTesting;
 
-import com.google.android.things.pio.I2cDevice;
-import com.google.android.things.pio.PeripheralManagerService;
 import com.google.android.things.pio.UartDevice;
 
 import java.io.IOException;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 
 /**
  * Driver for the DS18B20 temperature sensor.
@@ -61,10 +56,11 @@ public class Ds18b20 extends OneWire {
     /**
      * Minimum frequency of the measurements.
      */
-    public static final float MIN_FREQ_HZ = 1f;
+    public static final float MIN_FREQ_HZ = 1/600f;
 
     /**
      * Create a new Ds18b20 sensor driver connected on the given UART.
+     *
      * @param uart UART port the sensor is connected to.
      * @throws IOException
      */
@@ -74,8 +70,9 @@ public class Ds18b20 extends OneWire {
 
     /**
      * Create a new Ds18b20 sensor driver connected on the given UART with particular ID.
+     *
      * @param uart UART port the sensor is connected to.
-     * @param id OneWire ID of the sensor.
+     * @param id   OneWire ID of the sensor.
      * @throws IOException
      */
     public Ds18b20(String uart, String id) throws IOException {
@@ -84,19 +81,23 @@ public class Ds18b20 extends OneWire {
 
     /**
      * Create a new OneWire sensor driver connected on the given UART.
+     *
      * @param device UART device of the sensor.
      * @throws IOException
      */
+    @VisibleForTesting
     /*package*/ Ds18b20(UartDevice device) throws IOException {
         super(device);
     }
 
     /**
      * Create a new OneWire sensor driver connected on the given UART with particular ID..
+     *
      * @param device UART device of the sensor.
-     * @param id OneWire ID of the sensor.
+     * @param id     OneWire ID of the sensor.
      * @throws IOException
      */
+    @VisibleForTesting
     /*package*/ Ds18b20(UartDevice device, String id) throws IOException {
         super(device, id);
     }
@@ -113,19 +114,23 @@ public class Ds18b20 extends OneWire {
             while (oneWireBit(true)) {
                 Thread.sleep(100);
             }
-        } catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             throw new IOException("Interrupted waiting for conversion.");
         }
         // Read result
         oneWireCommand(DS18X20_READ, getOneWireId());
-        byte[] raw_measure = oneWireReadBytes(9);
-        // TODO(mef): Verify CRC8 of the result.
-        int msb = raw_measure[1] & 0xff;
-        int lsb = raw_measure[0] & 0xff;
-        float temp_read = (msb << 8 | lsb);
-        float temp = temp_read / 16;
-        return temp;
+        return convertTemperature(oneWireReadBytes(9));
     }
 
+    float convertTemperature(byte[] rawMeasure) {
+        // TODO(mef): Verify CRC8 of the result.
+        int msb = rawMeasure[1];
+        int lsb = rawMeasure[0];
+        if (lsb < 0) {
+            lsb = 256 + lsb;
+        }
+        float tempRead = msb * 256 + lsb;
+        float temp = tempRead / 16;
+        return temp;
+    }
 }

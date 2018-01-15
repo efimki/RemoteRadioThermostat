@@ -60,7 +60,7 @@ listen for sensor values using the [Sensor APIs][sensors]:
 ```java
 SensorManager mSensorManager = getSystemService(Context.SENSOR_SERVICE);
 SensorEventListener mListener = ...;
-Bmx280SensorDriver mSensorDriver;
+RadioThermostatSensorDriver mSensorDriver;
 
 mSensorManager.registerDynamicSensorCallback(new SensorManager.DynamicSensorCallback() {
     @Override
@@ -73,8 +73,6 @@ mSensorManager.registerDynamicSensorCallback(new SensorManager.DynamicSensorCall
 });
 
 try {
-    mRadioThermostat = new RadioThermostat(radioTheromostatHost);
-    
     mSensorDriver = new RadioThermostatSensorDriver(radioTheromostatHostAddress);
     mSensorDriver.registerTemperatureSensor();
 } catch (IOException e) {
@@ -114,5 +112,5 @@ the License.
 
 [Rest API]: https://radiothermostat.desk.com/customer/portal/articles/1268461-where-do-i-find-information-about-the-wifi-api-
 [Radio Thermostat Wi-Fi]: http://www.radiothermostat.com/wifi
-[jcenter]: https://bintray.com/google/androidthings/contrib-driver-bmx280/_latestVersion
+[jcenter]: https://bintray.com/google/androidthings/contrib-driver-radiothermostat/_latestVersion
 [sensors]: https://developer.android.com/guide/topics/sensors/sensors_overview.html

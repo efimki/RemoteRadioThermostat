@@ -11,6 +11,9 @@ import android.util.Log;
 
 import com.google.android.things.contrib.driver.onewire.Ds18b20SensorDriver;
 import com.google.android.things.contrib.driver.radiothermostat.RadioThermostatSensorDriver;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
 
 import java.io.IOException;
 
@@ -23,11 +26,14 @@ public class MainActivity extends Activity {
     private RadioThermostatSensorDriver mRadioThermostatSensorDriver;
     private Ds18b20SensorDriver mDs18b20SensorDriver;
 
+    private FirebaseDatabase mDatabase;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        // Connect to Firebase database.
+        mDatabase = FirebaseDatabase.getInstance();
 
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mSensorManager.registerDynamicSensorCallback(new SensorCallback());
@@ -54,6 +60,12 @@ public class MainActivity extends Activity {
         public void onSensorChanged (SensorEvent event) {
             Log.e("SensorEventCallback", "onSensorChanged: " + event.sensor.toString());
             Log.e("SensorEventCallback", "Sensor Value: " + event.values[0]);
+            String sensorName = event.sensor.getName();
+            final DatabaseReference log = mDatabase.getReference("Temperatures").child(sensorName);
+            // upload temperature to firebase.
+            log.child("timestamp").setValue(ServerValue.TIMESTAMP);
+            log.child("sensor").setValue(sensorName);
+            log.child("temp").setValue(event.values[0]);
         }
     }
 

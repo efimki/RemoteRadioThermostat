@@ -9,6 +9,14 @@ implementations of Android Things user space drivers for common peripherals
 as part of the Developer Preview release. There is no guarantee
 of correctness, completeness or robustness.
 
+Current Limitatios
+---------------------
+
+- Only one device open at the time per UART is supported.
+- The device ID discovery is not implemented.
+- CRC8 verification of measurement results is not implemented.
+- Only active (powered) mode has been tested.
+
 How to use the driver
 ---------------------
 

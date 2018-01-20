@@ -19,6 +19,7 @@ android {
 }
 
 dependencies {
+    implementation 'com.google.firebase:firebase-database:11.8.0'
     compile project(":onewire")
     compile project(":radiothermostat")
     implementation fileTree(dir: 'libs', include: ['*.jar'])
@@ -27,4 +28,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compileOnly 'com.google.android.things:androidthings:+'
+    compile 'com.google.firebase:firebase-core:11.8.0'
 }
+
+apply plugin: 'com.google.gms.google-services'

@@ -117,15 +117,15 @@ public class Ds18b20Test {
         float temp = ds18b20.convertTemperature(validRaw);
         assertEquals(19.875f, temp);
         assertEquals(85f,
-                ds18b20.convertTemperature(new byte[]{(byte) 0x50, (byte) 0x05, 0, 0, 0, 0, 0, 0, 0}));
+                ds18b20.convertTemperature(new byte[]{(byte) 0x50, (byte) 0x05, 0, 0, 0, 0, 0, 0, (byte) 0xd4}));
         assertEquals(125f,
-                ds18b20.convertTemperature(new byte[]{(byte) 0xd0, (byte) 0x07, 0, 0, 0, 0, 0, 0, 0}));
+                ds18b20.convertTemperature(new byte[]{(byte) 0xd0, (byte) 0x07, 0, 0, 0, 0, 0, 0, (byte) 0x3c}));
     }
 
     @Test
     public void convertTemperatureZero() throws IOException {
         Ds18b20 ds18b20 = new Ds18b20(mUart);
-        // Raw measurement equal to 0 celsius (but with invalid CRC8)
+        // Raw measurement equal to 0 celsius.
         byte[] validRaw = {0x0, 0x0, 0, 0, 0, 0, 0, 0, 0};
         float temp = ds18b20.convertTemperature(validRaw);
         assertEquals(0f, temp);
@@ -134,14 +134,14 @@ public class Ds18b20Test {
     @Test
     public void convertTemperatureNegative() throws IOException {
         Ds18b20 ds18b20 = new Ds18b20(mUart);
-        // Raw measurement equal to -1/16 celsius (but with invalid CRC8)
-        byte[] validRaw = {(byte) 0x5e, (byte) 0xff, 0, 0, 0, 0, 0, 0, 0};
+        // Raw measurement equal to -10.125 celsius.
+        byte[] validRaw = {(byte) 0x5e, (byte) 0xff, 0, 0, 0, 0, 0, 0, (byte) 0xa2};
         float temp = ds18b20.convertTemperature(validRaw);
         assertEquals(-10.125f, temp);
         assertEquals(-25.0625f,
-                ds18b20.convertTemperature(new byte[]{(byte) 0x6f, (byte) 0xfe, 0, 0, 0, 0, 0, 0, 0}));
+                ds18b20.convertTemperature(new byte[]{(byte) 0x6f, (byte) 0xfe, 0, 0, 0, 0, 0, 0, 0x20}));
         assertEquals(-0.5f,
-                ds18b20.convertTemperature(new byte[]{(byte) 0xf8, (byte) 0xff, 0, 0, 0, 0, 0, 0, 0}));
+                ds18b20.convertTemperature(new byte[]{(byte) 0xf8, (byte) 0xff, 0, 0, 0, 0, 0, 0, 0x0b}));
 
     }
 }

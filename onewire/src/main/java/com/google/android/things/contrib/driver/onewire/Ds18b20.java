@@ -19,6 +19,7 @@ package com.google.android.things.contrib.driver.onewire;
 import android.support.annotation.VisibleForTesting;
 
 import com.google.android.things.pio.UartDevice;
+import com.dalsemi.onewire.utils.CRC8;
 
 import java.io.IOException;
 
@@ -109,21 +110,30 @@ public class Ds18b20 extends OneWire {
      */
     float readTemperature() throws IOException {
         oneWireCommand(DS18X20_CONVERT_T, getOneWireId());
-        // Wait for conversion
+        // Wait for conversion.
         try {
-            while (oneWireBit(true)) {
+            for (int i = 1; i < 10; ++i) {
+                if(oneWireBit(true))
+                    break;
                 Thread.sleep(100);
             }
         } catch (InterruptedException e) {
             throw new IOException("Interrupted waiting for conversion.");
         }
-        // Read result
+        // Read result.
         oneWireCommand(DS18X20_READ, getOneWireId());
         return convertTemperature(oneWireReadBytes(9));
     }
 
-    float convertTemperature(byte[] rawMeasure) {
-        // TODO(mef): Verify CRC8 of the result.
+    float convertTemperature(byte[] rawMeasure) throws IOException {
+        // Verify CRC8 of the result.
+        int crc = CRC8.compute(rawMeasure, 0, 9);
+        if (crc != 0) {
+            // Calculate expected CRC.
+            int crcminus = CRC8.compute(rawMeasure, 0, 8);
+            throw new IOException("Invalid CRC8. Expected: " + Integer.toHexString(crcminus));
+        }
+
         int msb = rawMeasure[1];
         int lsb = rawMeasure[0];
         if (lsb < 0) {

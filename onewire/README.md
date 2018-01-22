@@ -14,8 +14,23 @@ Current Limitatios
 
 - Only one device open at the time per UART is supported.
 - The device ID discovery is not implemented.
-- CRC8 verification of measurement results is not implemented.
-- Only active (powered) mode has been tested.
+- Only active (powered) mode is supported.
+
+Sensor connection
+---------------------
+
+I've wired the sensor using the simplified diagram on [onewire-over-uart] project:
+
+![Schematics](pp2od_rd.png "Uart connection")
+
+My breadboard prototype looked this way:
+
+- Red - 3.3v
+- Black - GND
+- Yellow - UART RX
+- Green - UART TX
+
+![Breadboard](ds18b20_uart_bb.png "DS18b20 Breadboard")
 
 How to use the driver
 ---------------------
@@ -122,3 +137,4 @@ the License.
 [DS18B20]: https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf
 [jcenter]: https://bintray.com/google/androidthings/contrib-driver-ds18b20/_latestVersion
 [sensors]: https://developer.android.com/guide/topics/sensors/sensors_overview.html
+[onewire-over-uart]: https://github.com/dword1511/onewire-over-uart

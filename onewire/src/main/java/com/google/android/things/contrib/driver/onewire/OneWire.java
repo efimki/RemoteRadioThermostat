@@ -23,6 +23,8 @@ import com.google.android.things.pio.PeripheralManagerService;
 import com.google.android.things.pio.UartDevice;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class OneWire implements AutoCloseable {
     private static final String TAG = OneWire.class.getSimpleName();
@@ -32,7 +34,7 @@ public class OneWire implements AutoCloseable {
     static final byte OW_SEARCH_ROM = (byte) 0xf0;
 
     UartDevice mUartDevice;
-    byte[] mOneWireId;
+    long mOneWireId;
 
     /**
      * Create a new OneWire sensor driver connected on the given UART.
@@ -41,7 +43,7 @@ public class OneWire implements AutoCloseable {
      * @throws IOException
      */
     public OneWire(String uart) throws IOException {
-        this(uart, null);
+        this(uart, 0);
     }
 
     /**
@@ -51,7 +53,7 @@ public class OneWire implements AutoCloseable {
      * @param id   OneWire ID of the sensorr.
      * @throws IOException
      */
-    public OneWire(String uart, String id) throws IOException {
+    public OneWire(String uart, long id) throws IOException {
         this(new PeripheralManagerService().openUartDevice(uart), id);
     }
 
@@ -63,7 +65,7 @@ public class OneWire implements AutoCloseable {
      */
     @VisibleForTesting
     /*package*/ OneWire(UartDevice device) throws IOException {
-        this(device, null);
+        this(device, 0);
     }
 
     /**
@@ -74,7 +76,7 @@ public class OneWire implements AutoCloseable {
      * @throws IOException
      */
     @VisibleForTesting
-    /*package*/ OneWire(UartDevice device, String id) throws IOException {
+    /*package*/ OneWire(UartDevice device, long id) throws IOException {
         mUartDevice = device;
 
         try {
@@ -96,7 +98,7 @@ public class OneWire implements AutoCloseable {
     /**
      * Returns the One Wire Device ID.
      */
-    public byte[] getOneWireId() {
+    public long getOneWireId() {
         return mOneWireId;
     }
 
@@ -137,12 +139,14 @@ public class OneWire implements AutoCloseable {
         return bytes;
     }
 
-    void oneWireCommand(int command, byte[] id) throws IOException {
+    void oneWireCommand(int command, long id) throws IOException {
         reset();
-        if (id != null) {
+        if (id != 0) {
             oneWireWriteByte(OW_MATCH_ROM);
-            for (byte b : id) {
-                oneWireWriteByte(b);
+            ByteBuffer buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(id);
+            buffer.rewind();
+            while(buffer.hasRemaining()) {
+                oneWireWriteByte(buffer.get());
             }
         } else {
             oneWireWriteByte(OW_SKIP_ROM);

@@ -30,6 +30,8 @@ import org.mockito.junit.MockitoRule;
 import org.mockito.verification.VerificationMode;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import static junit.framework.Assert.assertEquals;
 import static org.mockito.Matchers.any;
@@ -143,5 +145,21 @@ public class Ds18b20Test {
         assertEquals(-0.5f,
                 ds18b20.convertTemperature(new byte[]{(byte) 0xf8, (byte) 0xff, 0, 0, 0, 0, 0, 0, 0x0b}));
 
+    }
+
+    @Test
+    public void convertByteBuffer() throws IOException {
+        byte[] address = {0x28, (byte) 0xff, (byte) 0xd7, 0x46, (byte) 0x81, 0x14, 0x02, 0x0c};
+        ByteBuffer addressBuff = ByteBuffer.wrap(address);
+        long adlong = addressBuff.getLong();
+        assertEquals(Long.parseUnsignedLong("28ffd7468114020c", 16), adlong);
+        addressBuff.rewind();
+        addressBuff.order(ByteOrder.LITTLE_ENDIAN);
+        long adlongLE = addressBuff.getLong();
+        // 28ffd7468114020c
+        byte[] temp = { 0x6f, 0x01, 0x4b, 0x46, 0x7f, (byte)0xff, 0x0c, 0x10, (byte) 0xee };
+        ByteBuffer tempBuff = ByteBuffer.wrap(temp).order(ByteOrder.LITTLE_ENDIAN);;
+        short tempShort = tempBuff.getShort();
+        assertEquals(22.9375f, tempShort/16f);
     }
 }

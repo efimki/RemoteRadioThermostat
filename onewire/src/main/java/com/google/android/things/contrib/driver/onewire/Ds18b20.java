@@ -22,6 +22,8 @@ import com.google.android.things.pio.UartDevice;
 import com.dalsemi.onewire.utils.CRC8;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Driver for the DS18B20 temperature sensor.
@@ -76,7 +78,7 @@ public class Ds18b20 extends OneWire {
      * @param id   OneWire ID of the sensor.
      * @throws IOException
      */
-    public Ds18b20(String uart, String id) throws IOException {
+    public Ds18b20(String uart, long id) throws IOException {
         super(uart, id);
     }
 
@@ -99,7 +101,7 @@ public class Ds18b20 extends OneWire {
      * @throws IOException
      */
     @VisibleForTesting
-    /*package*/ Ds18b20(UartDevice device, String id) throws IOException {
+    /*package*/ Ds18b20(UartDevice device, long id) throws IOException {
         super(device, id);
     }
 
@@ -134,13 +136,7 @@ public class Ds18b20 extends OneWire {
             throw new IOException("Invalid CRC8. Expected: " + Integer.toHexString(crcminus));
         }
 
-        int msb = rawMeasure[1];
-        int lsb = rawMeasure[0];
-        if (lsb < 0) {
-            lsb = 256 + lsb;
-        }
-        float tempRead = msb * 256 + lsb;
-        float temp = tempRead / 16;
-        return temp;
+        ByteBuffer raw = ByteBuffer.wrap(rawMeasure).order(ByteOrder.LITTLE_ENDIAN);
+        return raw.getShort() / 16f;
     }
 }

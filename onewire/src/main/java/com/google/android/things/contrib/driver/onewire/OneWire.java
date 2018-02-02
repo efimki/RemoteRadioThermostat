@@ -34,7 +34,6 @@ public class OneWire implements AutoCloseable {
     static final byte OW_SEARCH_ROM = (byte) 0xf0;
 
     UartDevice mUartDevice;
-    long mOneWireId;
 
     /**
      * Create a new OneWire sensor driver connected on the given UART.
@@ -43,18 +42,7 @@ public class OneWire implements AutoCloseable {
      * @throws IOException
      */
     public OneWire(String uart) throws IOException {
-        this(uart, 0);
-    }
-
-    /**
-     * Create a new OneWire sensor driver connected on the given UART with particular ID.
-     *
-     * @param uart UART port the sensor is connected to.
-     * @param id   OneWire ID of the sensorr.
-     * @throws IOException
-     */
-    public OneWire(String uart, long id) throws IOException {
-        this(new PeripheralManagerService().openUartDevice(uart), id);
+        this(new PeripheralManagerService().openUartDevice(uart));
     }
 
     /**
@@ -65,18 +53,6 @@ public class OneWire implements AutoCloseable {
      */
     @VisibleForTesting
     /*package*/ OneWire(UartDevice device) throws IOException {
-        this(device, 0);
-    }
-
-    /**
-     * Create a new OneWire sensor driver connected on the given UART with particular ID..
-     *
-     * @param device UART device of the sensor.
-     * @param id     OneWire ID of the sensor.
-     * @throws IOException
-     */
-    @VisibleForTesting
-    /*package*/ OneWire(UartDevice device, long id) throws IOException {
         mUartDevice = device;
 
         try {
@@ -93,13 +69,6 @@ public class OneWire implements AutoCloseable {
             }
             throw e;
         }
-    }
-
-    /**
-     * Returns the One Wire Device ID.
-     */
-    public long getOneWireId() {
-        return mOneWireId;
     }
 
     protected boolean oneWireBit(boolean b) throws IOException {

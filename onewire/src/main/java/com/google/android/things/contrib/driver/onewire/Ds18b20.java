@@ -30,7 +30,7 @@ import java.nio.ByteOrder;
  * Driver for the DS18B20 temperature sensor.
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
-public class Ds18b20 extends OneWire {
+public class Ds18b20 implements AutoCloseable {
 
     private static final String TAG = Ds18b20.class.getSimpleName();
 
@@ -62,6 +62,9 @@ public class Ds18b20 extends OneWire {
      */
     public static final float MIN_FREQ_HZ = 1/600f;
 
+    OneWire mOneWire;
+    long mOneWireId = 0;
+
     /**
      * Create a new Ds18b20 sensor driver connected on the given UART.
      *
@@ -69,7 +72,7 @@ public class Ds18b20 extends OneWire {
      * @throws IOException
      */
     public Ds18b20(String uart) throws IOException {
-        super(uart);
+        this(uart, 0);
     }
 
     /**
@@ -80,7 +83,8 @@ public class Ds18b20 extends OneWire {
      * @throws IOException
      */
     public Ds18b20(String uart, long id) throws IOException {
-        super(uart, id);
+        mOneWire = new OneWire(uart);
+        mOneWireId = id;
     }
 
     /**
@@ -91,7 +95,7 @@ public class Ds18b20 extends OneWire {
      */
     @VisibleForTesting
     /*package*/ Ds18b20(UartDevice device) throws IOException {
-        super(device);
+        this(device, 0);
     }
 
     /**
@@ -103,7 +107,16 @@ public class Ds18b20 extends OneWire {
      */
     @VisibleForTesting
     /*package*/ Ds18b20(UartDevice device, long id) throws IOException {
-        super(device, id);
+        mOneWire = new OneWire(device);
+        mOneWireId = id;
+    }
+
+
+    /**
+     * Returns the One Wire Device ID.
+     */
+    public long getOneWireId() {
+        return mOneWireId;
     }
 
     /**
@@ -112,12 +125,12 @@ public class Ds18b20 extends OneWire {
      * @return the current temperature in degrees Celsius
      */
     float readTemperature() throws IOException {
-        Log.i(TAG, "Reading temperature.");
-        oneWireCommand(DS18X20_CONVERT_T, getOneWireId());
+        Log.i(TAG, "Reading Temperature.");
+        mOneWire.oneWireCommand(DS18X20_CONVERT_T, getOneWireId());
         // Wait for conversion.
         try {
             for (int i = 1; i < 10; ++i) {
-                if(oneWireBit(true))
+                if(mOneWire.oneWireBit(true))
                     break;
                 Thread.sleep(100);
             }
@@ -125,8 +138,8 @@ public class Ds18b20 extends OneWire {
             throw new IOException("Interrupted waiting for conversion.");
         }
         // Read result.
-        oneWireCommand(DS18X20_READ, getOneWireId());
-        float temp = convertTemperature(oneWireReadBytes(9));
+        mOneWire.oneWireCommand(DS18X20_READ, getOneWireId());
+        float temp = convertTemperature(mOneWire.oneWireReadBytes(9));
         Log.i(TAG, "Read Temperature: " + Float.toString(temp));
         return temp;
     }
@@ -142,5 +155,10 @@ public class Ds18b20 extends OneWire {
 
         ByteBuffer raw = ByteBuffer.wrap(rawMeasure).order(ByteOrder.LITTLE_ENDIAN);
         return raw.getShort() / 16f;
+    }
+
+    @Override
+    public void close() throws IOException {
+        mOneWire.close();
     }
 }

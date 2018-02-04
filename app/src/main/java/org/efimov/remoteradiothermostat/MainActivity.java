@@ -16,6 +16,8 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 
 public class MainActivity extends Activity {
@@ -39,10 +41,10 @@ public class MainActivity extends Activity {
         mSensorManager.registerDynamicSensorCallback(new SensorCallback());
 
         try {
-            // TODO(mef): FIX THIS
-            //StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
-            //mRadioThermostatSensorDriver = new RadioThermostatSensorDriver("192.168.1.60");
-            //mRadioThermostatSensorDriver.registerTemperatureSensor();
+            // Register RadioThermostat
+            mRadioThermostatSensorDriver = new RadioThermostatSensorDriver("192.168.1.60");
+            mRadioThermostatSensorDriver.registerTemperatureSensor();
+            // Register Ds18b20
             mDs18b20SensorDriver = new Ds18b20SensorDriver("UART6");
             mDs18b20SensorDriver.registerTemperatureSensor();
         } catch (IOException e) {
@@ -58,14 +60,15 @@ public class MainActivity extends Activity {
     private class SensorListener extends SensorEventCallback {
         @Override
         public void onSensorChanged (SensorEvent event) {
-            Log.e("SensorEventCallback", "onSensorChanged: " + event.sensor.toString());
-            Log.e("SensorEventCallback", "Sensor Value: " + event.values[0]);
+            Log.i("SensorEventCallback", "onSensorChanged: " + event.sensor.toString());
             String sensorName = event.sensor.getName();
+            float temp = event.values[0];
+            Log.i( TAG, "Reporting temperature: " + sensorName + " = " + Float.toString(temp));
             final DatabaseReference log = mDatabase.getReference("Temperatures").child(sensorName);
             // upload temperature to firebase.
-            log.child("timestamp").setValue(ServerValue.TIMESTAMP);
             log.child("sensor").setValue(sensorName);
-            log.child("temp").setValue(event.values[0]);
+            log.child("temp").setValue((int)event.values[0]);
+            log.child("time").setValue(new SimpleDateFormat("yyyy.MM.dd HH:mm:ss").format(new Date()));
         }
     }
 
@@ -73,8 +76,6 @@ public class MainActivity extends Activity {
         @Override
         public void onDynamicSensorConnected(Sensor sensor) {
             //Sensor connected
-            // mSensorManager?.registerListener(this@SensorDriverService, sensor,
-            //        SensorManager.SENSOR_DELAY_NORMAL)
             Log.e("DynamicSensorCallback", "Sensor Connected. " + sensor.toString());
             if (sensor.getType() == Sensor.TYPE_AMBIENT_TEMPERATURE) {
                 mSensorManager.registerListener(new SensorListener(), sensor, SensorManager.SENSOR_DELAY_NORMAL);
@@ -84,7 +85,6 @@ public class MainActivity extends Activity {
         @Override
         public void onDynamicSensorDisconnected(Sensor sensor) {
             //Sensor disconnected
-            // mSensorManager.unregisterListener(this);
             Log.e("DynamicSensorCallback", "Sensor Disconnected. " + sensor.toString());
         }
     }

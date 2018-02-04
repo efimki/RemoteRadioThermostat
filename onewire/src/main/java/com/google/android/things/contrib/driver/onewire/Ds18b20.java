@@ -17,6 +17,7 @@
 package com.google.android.things.contrib.driver.onewire;
 
 import android.support.annotation.VisibleForTesting;
+import android.util.Log;
 
 import com.google.android.things.pio.UartDevice;
 import com.dalsemi.onewire.utils.CRC8;
@@ -111,6 +112,7 @@ public class Ds18b20 extends OneWire {
      * @return the current temperature in degrees Celsius
      */
     float readTemperature() throws IOException {
+        Log.i(TAG, "Reading temperature.");
         oneWireCommand(DS18X20_CONVERT_T, getOneWireId());
         // Wait for conversion.
         try {
@@ -124,7 +126,9 @@ public class Ds18b20 extends OneWire {
         }
         // Read result.
         oneWireCommand(DS18X20_READ, getOneWireId());
-        return convertTemperature(oneWireReadBytes(9));
+        float temp = convertTemperature(oneWireReadBytes(9));
+        Log.i(TAG, "Read Temperature: " + Float.toString(temp));
+        return temp;
     }
 
     float convertTemperature(byte[] rawMeasure) throws IOException {

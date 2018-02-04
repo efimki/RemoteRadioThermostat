@@ -33,8 +33,8 @@ public class Ds18b20SensorDriver implements AutoCloseable {
     // documented at https://source.android.com/devices/sensors/hal-interface.html#sensor_t
     private static final String DRIVER_VENDOR = "Dallas Semiconductors";
     private static final String DRIVER_NAME = "DS18B20";
-    private static final int DRIVER_MIN_DELAY_US = Math.round(1000000.f / Ds18b20.MAX_FREQ_HZ);
-    private static final int DRIVER_MAX_DELAY_US = Math.round(1000000.f / Ds18b20.MIN_FREQ_HZ);
+    private static final int DRIVER_MIN_DELAY_US = 10 * 1000 * 1000;
+    private static final int DRIVER_MAX_DELAY_US = 20 * 1000 * 1000;
 
     private Ds18b20 mDevice;
 

@@ -32,9 +32,9 @@ public class RadioThermostatSensorDriver implements AutoCloseable {
     // DRIVER parameters
     // documented at https://source.android.com/devices/sensors/hal-interface.html#sensor_t
     private static final String DRIVER_VENDOR = "RadioThermostat";
-    private static final String DRIVER_NAME = "Wi-Fi USNAP ";
-    private static final int DRIVER_MIN_DELAY_US = Math.round(1000000.f / RadioThermostat.MAX_FREQ_HZ);
-    private static final int DRIVER_MAX_DELAY_US = Math.round(1000000.f / RadioThermostat.MIN_FREQ_HZ);
+    private static final String DRIVER_NAME = "Wi-Fi USNAP";
+    private static final int DRIVER_MIN_DELAY_US = 30 * 1000 * 1000;
+    private static final int DRIVER_MAX_DELAY_US = 60 * 1000 * 1000;
 
     private RadioThermostat mDevice;
 
@@ -124,8 +124,8 @@ public class RadioThermostatSensorDriver implements AutoCloseable {
                         .setMaxRange(DRIVER_MAX_RANGE)
                         .setResolution(DRIVER_RESOLUTION)
                         .setPower(DRIVER_POWER)
-                        .setMinDelay(DRIVER_MIN_DELAY_US)
                         .setRequiredPermission(DRIVER_REQUIRED_PERMISSION)
+                        .setMinDelay(DRIVER_MIN_DELAY_US)
                         .setMaxDelay(DRIVER_MAX_DELAY_US)
                         .setUuid(UUID.randomUUID())
                         .setDriver(this)

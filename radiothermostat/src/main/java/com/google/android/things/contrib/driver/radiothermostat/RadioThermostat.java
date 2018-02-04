@@ -16,11 +16,10 @@
 
 package com.google.android.things.contrib.driver.radiothermostat;
 
+import android.os.HandlerThread;
 import android.support.annotation.IntDef;
 import android.support.annotation.VisibleForTesting;
-
-import com.google.android.things.pio.I2cDevice;
-import com.google.android.things.pio.PeripheralManagerService;
+import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -82,7 +81,8 @@ public class RadioThermostat implements AutoCloseable {
     public static final int MODE_FORCED = 1;
     public static final int MODE_NORMAL = 2;
 
-    private HttpURLConnection mConnnection;
+    private URL mUrl;
+    private HandlerThread mNetworkThread;
     private JSONObject mLastResponse;
     private int mMode = MODE_NORMAL;
     private boolean mEnabled;
@@ -94,32 +94,24 @@ public class RadioThermostat implements AutoCloseable {
      * @param host Name or IP Address of radio thermostat host.
      */
     public RadioThermostat(String host) throws IOException {
-        URL urlObj = new URL("http://" + host + "/tstat");
-        mConnnection = (HttpURLConnection) urlObj.openConnection();
+        mUrl = new URL("http://" + host + "/tstat");
+        mNetworkThread = new HandlerThread(TAG);
     }
 
     @VisibleForTesting
-    /*package*/ RadioThermostat(HttpURLConnection connection) {
-        mConnnection = connection;
-    }
-
-    @VisibleForTesting
-    /*package*/ RadioThermostat(HttpURLConnection connection, JSONObject responseJson) {
-        mConnnection = connection;
+    /*package*/ RadioThermostat(JSONObject responseJson) {
         mLastResponse = responseJson;
     }
 
-    private void connect() throws IOException {
-        mConnnection.setDoOutput(false);
-        mConnnection.setRequestMethod("GET");
-        mConnnection.setConnectTimeout(15000);
-        mConnnection.connect();
-    }
 
     private void getTemperatureFromThermostat() throws IOException, JSONException {
-        connect();
+        HttpURLConnection connection = (HttpURLConnection) mUrl.openConnection();
+        connection.setDoOutput(false);
+        connection.setRequestMethod("GET");
+        connection.setConnectTimeout(15000);
+        connection.connect();
         //Receive the response from the server
-        InputStream in = new BufferedInputStream(mConnnection.getInputStream());
+        InputStream in = new BufferedInputStream(connection.getInputStream());
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
         StringBuilder result = new StringBuilder();
         String line;
@@ -128,9 +120,8 @@ public class RadioThermostat implements AutoCloseable {
         }
         in.close();
         reader.close();
-        if (mLastResponse == null) {
-            mLastResponse = new JSONObject(result.toString());
-        }
+        connection.disconnect();
+        mLastResponse = new JSONObject(result.toString());
     }
 
     /**
@@ -139,15 +130,18 @@ public class RadioThermostat implements AutoCloseable {
      * @return the current temperature in degrees Celsius
      */
     private float readTemperatureJson() throws IOException, IllegalStateException {
+        float temp = INVALID_TEMP_C;
         try {
+            Log.i(TAG, "Reading Temperature.");
             // try parse the string to a JSON object
             getTemperatureFromThermostat();
             double tempF = mLastResponse.getDouble("temp");
-            return (float) (tempF - 32.0f) / 1.8f;
+            temp = (float) (tempF - 32.0f) / 1.8f;
+            Log.i(TAG, "Read Temperature:" + Float.toString(temp));
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        return INVALID_TEMP_C;
+        return temp;
     }
 
     /**
@@ -155,14 +149,13 @@ public class RadioThermostat implements AutoCloseable {
      */
     @Override
     public void close() throws IOException {
-        if (mConnnection != null) {
-            mConnnection.disconnect();
-            mConnnection = null;
+        if (mUrl != null) {
+            mUrl = null;
         }
     }
 
     public void setMode(int mode) throws IllegalStateException {
-        if (mConnnection == null) {
+        if (mUrl == null) {
             throw new IllegalStateException("Thermostat connection is not open.");
         }
         mMode = mode;
@@ -174,9 +167,6 @@ public class RadioThermostat implements AutoCloseable {
      * @return the current temperature in degrees Celsius
      */
     public float readTemperature() throws IOException, IllegalStateException {
-        if (mConnnection == null) {
-            throw new IllegalStateException("Thermostat connection is not open.");
-        }
         switch (mMode) {
             case MODE_FORCED:
                 return readTemperatureJson();

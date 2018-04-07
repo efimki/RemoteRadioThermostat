@@ -19,12 +19,11 @@ package com.google.android.things.contrib.driver.onewire;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
-import com.google.android.things.pio.PeripheralManagerService;
+import com.google.android.things.pio.PeripheralManager;
 import com.google.android.things.pio.UartDevice;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 public class OneWire implements AutoCloseable {
     private static final String TAG = OneWire.class.getSimpleName();
@@ -32,6 +31,9 @@ public class OneWire implements AutoCloseable {
     static final byte OW_MATCH_ROM = 0x55;
     static final byte OW_SKIP_ROM = (byte) 0xcc;
     static final byte OW_SEARCH_ROM = (byte) 0xf0;
+    static final int OW_SEARCH_FIRST = -1;
+    static final int OW_ID_SIZE = 8;
+
 
     UartDevice mUartDevice;
 
@@ -42,7 +44,7 @@ public class OneWire implements AutoCloseable {
      * @throws IOException
      */
     public OneWire(String uart) throws IOException {
-        this(new PeripheralManagerService().openUartDevice(uart));
+        this(PeripheralManager.getInstance().openUartDevice(uart));
     }
 
     /**
@@ -112,15 +114,66 @@ public class OneWire implements AutoCloseable {
         reset();
         if (id != 0) {
             oneWireWriteByte(OW_MATCH_ROM);
-            ByteBuffer buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(id);
+            ByteBuffer buffer = ByteBuffer.allocate(8).putLong(id);
             buffer.rewind();
-            while(buffer.hasRemaining()) {
+            while (buffer.hasRemaining()) {
                 oneWireWriteByte(buffer.get());
             }
         } else {
             oneWireWriteByte(OW_SKIP_ROM);
         }
         oneWireWriteByte((byte) command);
+    }
+
+    long oneWireFindRom() throws IOException {
+        byte[] romId = new byte[8];
+        int diff = OW_SEARCH_FIRST;
+        diff = findNextRom(diff, romId);
+        long id = ByteBuffer.wrap(romId).getLong();
+        return id;
+    }
+
+    private int findNextRom(int diff, byte[] id) throws IOException {
+        int nextDiff = 0;
+        int bitPos = OW_ID_SIZE * 8;
+        int bytePos = 0;
+        reset();
+        oneWireWriteByte(OW_SEARCH_ROM); /* ROM search command */
+        do {
+            for (int j = 0; j < 8; ++j) {
+                // Read one bit.
+                boolean bit = oneWireBit(true);
+                // Read complement bit.
+                if (oneWireBit(true)) {
+                    if (bit) {
+                        // Read complement bit, if 1-1: data error.
+                        throw new IOException("Data Error");
+                    }
+                } else if (!bit) {
+                    if (diff > bitPos || (((id[bytePos] & 1) != 0) && diff != bitPos)) {
+                        // if 0-0: 2 devices
+                        // now true
+                        bit = true;
+                        // Next pass 0.
+                        nextDiff = bitPos;
+                    }
+                }
+                // Write one bit back.
+                oneWireBit(bit);
+                // Shift current id byte right.
+                id[bytePos] = (byte) ((id[bytePos] >> 1) & 0x7f);
+                if (bit) {
+                    // Store bit.
+                    id[bytePos] = (byte) (id[bytePos] | 0x80);
+                }
+
+                --bitPos;
+            }
+            // Next byte.
+            bytePos++;
+        } while (bitPos != 0);
+        // Next bit to continue search.
+        return nextDiff;
     }
 
     private void uartWriteByte(int b) throws IOException {
@@ -149,7 +202,7 @@ public class OneWire implements AutoCloseable {
         return b;
     }
 
-    protected boolean reset() throws IOException {
+    protected void reset() throws IOException {
         if (mUartDevice == null) {
             throw new IllegalStateException("Uart device is not open");
         }
@@ -160,7 +213,6 @@ public class OneWire implements AutoCloseable {
         if (probe == 0 || probe == 0xf0) {
             throw new IOException("OneWire devices not found");
         }
-        return true;
     }
 
     @Override

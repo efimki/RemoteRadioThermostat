@@ -46,6 +46,7 @@ public class MainActivity extends Activity {
             mRadioThermostatSensorDriver.registerTemperatureSensor();
             // Register Ds18b20
             mDs18b20SensorDriver = new Ds18b20SensorDriver("UART6");
+            //mDs18b20SensorDriver = new Ds18b20SensorDriver("USB1-1:1.0");
             mDs18b20SensorDriver.registerTemperatureSensor();
         } catch (IOException e) {
             Log.e(TAG, "Cannot register sensor", e);

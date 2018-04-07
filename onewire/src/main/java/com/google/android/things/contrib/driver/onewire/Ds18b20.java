@@ -73,6 +73,8 @@ public class Ds18b20 implements AutoCloseable {
      */
     public Ds18b20(String uart) throws IOException {
         this(uart, 0);
+        Log.i(TAG, "Finding ROM.");
+        mOneWireId = mOneWire.oneWireFindRom();
     }
 
     /**

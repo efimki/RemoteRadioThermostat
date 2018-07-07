@@ -36,7 +36,9 @@ public class Ds18b20SensorDriver implements AutoCloseable {
     private static final int DRIVER_MIN_DELAY_US = 10 * 1000 * 1000;
     private static final int DRIVER_MAX_DELAY_US = 20 * 1000 * 1000;
 
-    private Ds18b20 mDevice;
+    private String mUart;
+    private long mId;
+
 
     private TemperatureUserDriver mTemperatureUserDriver;
 
@@ -49,8 +51,22 @@ public class Ds18b20SensorDriver implements AutoCloseable {
      * @see #registerTemperatureSensor()
      */
     public Ds18b20SensorDriver(String uart) throws IOException {
-        mDevice = new Ds18b20(uart);
+        this(uart, 0);
     }
+
+    /**
+     * Create a new Ds18b20 sensor driver connected on the given UART.
+     * The driver emits {@link android.hardware.Sensor} with temperature data when
+     * registered.
+     * @param uart UART port the sensor is connected to.
+     * @param id   OneWire ID of the sensor.
+     * @throws IOException
+     * @see #registerTemperatureSensor()
+     */
+    public Ds18b20SensorDriver(String uart, long id) throws IOException {
+        mUart = uart;
+    }
+
 
     /**
      * Close the driver and the underlying device.
@@ -59,13 +75,6 @@ public class Ds18b20SensorDriver implements AutoCloseable {
     @Override
     public void close() throws IOException {
         unregisterTemperatureSensor();
-        if (mDevice != null) {
-            try {
-                mDevice.close();
-            } finally {
-                mDevice = null;
-            }
-        }
     }
 
     /**
@@ -73,10 +82,6 @@ public class Ds18b20SensorDriver implements AutoCloseable {
      * @see #unregisterTemperatureSensor()
      */
     public void registerTemperatureSensor() {
-        if (mDevice == null) {
-            throw new IllegalStateException("cannot register closed driver");
-        }
-
         if (mTemperatureUserDriver == null) {
             mTemperatureUserDriver = new TemperatureUserDriver();
             UserDriverManager.getInstance().registerSensor(mTemperatureUserDriver.getUserSensor());
@@ -127,7 +132,12 @@ public class Ds18b20SensorDriver implements AutoCloseable {
 
         @Override
         public UserSensorReading read() throws IOException {
-            return new UserSensorReading(new float[]{mDevice.readTemperature()});
+            Ds18b20 device = new Ds18b20(mUart, mId);
+            try {
+                return new UserSensorReading(new float[]{device.readTemperature()});
+            } finally {
+                device.close();
+            }
         }
 
         @Override

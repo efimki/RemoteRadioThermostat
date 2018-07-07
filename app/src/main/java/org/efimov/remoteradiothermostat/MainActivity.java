@@ -15,7 +15,10 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 
+import org.chromium.net.CronetEngine;
+
 import java.io.IOException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -29,6 +32,7 @@ public class MainActivity extends Activity {
     private Ds18b20SensorDriver mDs18b20SensorDriver;
 
     private FirebaseDatabase mDatabase;
+    private CronetEngine mCronetEngine;
 
 
     @Override
@@ -39,6 +43,9 @@ public class MainActivity extends Activity {
 
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mSensorManager.registerDynamicSensorCallback(new SensorCallback());
+
+        mCronetEngine = new CronetEngine.Builder(this).build();
+        URL.setURLStreamHandlerFactory(mCronetEngine.createURLStreamHandlerFactory());
 
         try {
             // Register RadioThermostat

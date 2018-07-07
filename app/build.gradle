@@ -28,7 +28,9 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compileOnly 'com.google.android.things:androidthings:+'
-    compile 'com.google.firebase:firebase-core:11.8.0'
+    implementation 'org.chromium.net:cronet-embedded:66.3350.12-alpha'
+
+    // compile 'com.google.firebase:firebase-core:11.8.0'
 }
 
 apply plugin: 'com.google.gms.google-services'

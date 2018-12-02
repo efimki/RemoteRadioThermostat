@@ -89,6 +89,8 @@ public class OneWire implements AutoCloseable {
     }
 
     protected byte oneWireWriteByte(byte b) throws IOException {
+        Log.i(TAG, "oneWireWriteByte start: " + Integer.toHexString(b));
+
         int i = 8;
         do {
             boolean j = oneWireBit((b & 1) != 0);
@@ -98,6 +100,7 @@ public class OneWire implements AutoCloseable {
                 b |= 0x80;
             }
         } while (--i != 0);
+        Log.i(TAG, "oneWireWriteByte done: " + Integer.toHexString(b));
         return b;
     }
 
@@ -191,9 +194,15 @@ public class OneWire implements AutoCloseable {
         // Maximum amount of data to read at one time
         final int maxCount = 1;
         byte[] buffer = new byte[maxCount];
+        int sleepMillis = 10;
         while (mUartDevice.read(buffer, buffer.length) == 0) {
             try {
-                Thread.sleep(5);
+                Thread.sleep(sleepMillis);
+                sleepMillis = sleepMillis * 2;
+                if (sleepMillis > 100) {
+                    Log.e(TAG, "ReadByte timeout, throwing exception");
+                    throw new IOException("UART ReadByte timeout");
+                }
             } catch (InterruptedException e) {
                 break;
             }
@@ -202,7 +211,7 @@ public class OneWire implements AutoCloseable {
         return b;
     }
 
-    protected void reset() throws IOException {
+    protected boolean reset() throws IOException {
         if (mUartDevice == null) {
             throw new IllegalStateException("Uart device is not open");
         }
@@ -213,6 +222,7 @@ public class OneWire implements AutoCloseable {
         if (probe == 0 || probe == 0xf0) {
             throw new IOException("OneWire devices not found");
         }
+        return true;
     }
 
     @Override

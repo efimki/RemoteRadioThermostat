@@ -20,15 +20,15 @@ android {
 
 dependencies {
     implementation 'com.google.firebase:firebase-database:11.8.0'
-    compile project(":onewire")
-    compile project(":radiothermostat")
+    implementation project(":onewire")
+    implementation project(":radiothermostat")
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:support-v4:26.1.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compileOnly 'com.google.android.things:androidthings:+'
-    implementation 'org.chromium.net:cronet-embedded:66.3350.12-alpha'
+    implementation 'org.chromium.net:cronet-embedded:70.3538.110'
 
     // compile 'com.google.firebase:firebase-core:11.8.0'
 }

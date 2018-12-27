@@ -5,15 +5,19 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventCallback;
 import android.hardware.SensorManager;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.os.StrictMode;
 import android.util.Log;
 
 import com.google.android.things.contrib.driver.onewire.Ds18b20SensorDriver;
 import com.google.android.things.contrib.driver.radiothermostat.RadioThermostatSensorDriver;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ServerValue;
+import com.google.firebase.database.IgnoreExtraProperties;
+import com.google.firebase.database.ValueEventListener;
 
 import org.chromium.net.CronetEngine;
 
@@ -34,30 +38,25 @@ public class MainActivity extends Activity {
     private FirebaseDatabase mDatabase;
     private CronetEngine mCronetEngine;
 
+    MainActivity() {
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Connect to Firebase database.
-        mDatabase = FirebaseDatabase.getInstance();
-
-        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        mSensorManager.registerDynamicSensorCallback(new SensorCallback());
-
+        // Use Cronet for networking.
         mCronetEngine = new CronetEngine.Builder(this).build();
         URL.setURLStreamHandlerFactory(mCronetEngine.createURLStreamHandlerFactory());
 
-        try {
-            // Register RadioThermostat
-            mRadioThermostatSensorDriver = new RadioThermostatSensorDriver("192.168.1.60");
-            mRadioThermostatSensorDriver.registerTemperatureSensor();
-            // Register Ds18b20
-            mDs18b20SensorDriver = new Ds18b20SensorDriver("UART6");
-            //mDs18b20SensorDriver = new Ds18b20SensorDriver("USB1-1:1.0");
-            mDs18b20SensorDriver.registerTemperatureSensor();
-        } catch (IOException e) {
-            Log.e(TAG, "Cannot register sensor", e);
-        }
+        // Connect to Firebase database.
+        mDatabase = FirebaseDatabase.getInstance();
+        mDatabase.setPersistenceEnabled(true);
+
+        // Register sensor callback.
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mSensorManager.registerDynamicSensorCallback(new SensorCallback());
+
+        readConfig();
     }
 
     @Override
@@ -67,15 +66,15 @@ public class MainActivity extends Activity {
 
     private class SensorListener extends SensorEventCallback {
         @Override
-        public void onSensorChanged (SensorEvent event) {
+        public void onSensorChanged(SensorEvent event) {
             Log.i("SensorEventCallback", "onSensorChanged: " + event.sensor.toString());
             String sensorName = event.sensor.getName();
             float temp = event.values[0];
-            Log.i( TAG, "Reporting temperature: " + sensorName + " = " + Float.toString(temp));
+            Log.i(TAG, "Reporting temperature: " + sensorName + " = " + Float.toString(temp));
             final DatabaseReference log = mDatabase.getReference("Temperatures").child(sensorName);
             // upload temperature to firebase.
             log.child("sensor").setValue(sensorName);
-            log.child("temp").setValue((int)event.values[0]);
+            log.child("temp").setValue((int) event.values[0]);
             log.child("time").setValue(new SimpleDateFormat("yyyy.MM.dd HH:mm:ss").format(new Date()));
         }
     }
@@ -95,6 +94,53 @@ public class MainActivity extends Activity {
             //Sensor disconnected
             Log.e("DynamicSensorCallback", "Sensor Disconnected. " + sensor.toString());
         }
+    }
+
+    private boolean setupWifi(String ssid, String passkey) {
+        WifiConfiguration wifiConfiguration = new WifiConfiguration();
+        wifiConfiguration.SSID = "\"" + ssid + "\"";
+        wifiConfiguration.preSharedKey = "\"" + passkey + "\"";
+
+        WifiManager manager = (WifiManager) getSystemService(WIFI_SERVICE);
+        boolean enabled = manager.enableNetwork(manager.addNetwork(wifiConfiguration), true);
+        return enabled;
+    }
+
+    private void readConfig() {
+        mDatabase.getReference("Config").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                String ssid = dataSnapshot.child("ssid").getValue(String.class);
+                String pwd = dataSnapshot.child("pwd").getValue(String.class);
+                if (ssid != "") {
+                    Log.i(TAG, "Setup WiFI: " + ssid);
+                    setupWifi(ssid, pwd);
+                }
+                try {
+                    // Register Ds18b20
+                    String host = dataSnapshot.child("host").getValue(String.class);
+                    if (host != "") {
+                        Log.i(TAG, "Register RadioThermostatSensorDriver: " + host);
+                        mRadioThermostatSensorDriver = new RadioThermostatSensorDriver(host);
+                        mRadioThermostatSensorDriver.registerTemperatureSensor();
+                    }
+                    // Register Ds18b20
+                    String uart = dataSnapshot.child("uart").getValue(String.class);
+                    if (uart != "") {
+                        Log.i(TAG, "Register mDs18b20SensorDriver: " + uart);
+                        mDs18b20SensorDriver = new Ds18b20SensorDriver(uart);
+                        mDs18b20SensorDriver.registerTemperatureSensor();
+                    }
+                } catch (IOException e) {
+                    Log.e(TAG, "Cannot register sensor", e);
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
     }
 
 }

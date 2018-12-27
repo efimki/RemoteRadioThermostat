@@ -124,7 +124,6 @@ public class RadioThermostatSensorDriver implements AutoCloseable {
                         .setMaxRange(DRIVER_MAX_RANGE)
                         .setResolution(DRIVER_RESOLUTION)
                         .setPower(DRIVER_POWER)
-                        .setRequiredPermission(DRIVER_REQUIRED_PERMISSION)
                         .setMinDelay(DRIVER_MIN_DELAY_US)
                         .setMaxDelay(DRIVER_MAX_DELAY_US)
                         .setUuid(UUID.randomUUID())
